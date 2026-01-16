@@ -89,7 +89,7 @@ export const SystemDebugDrawer = () => {
                             <input
                                 type="range"
                                 min="2000"
-                                max="20000"
+                                max="30000"
                                 step="1000"
                                 value={debugRowMaxWidth}
                                 onChange={(e) => setDebugRowMaxWidth(Number(e.target.value))}

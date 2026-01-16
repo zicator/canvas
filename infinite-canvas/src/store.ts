@@ -1,4 +1,5 @@
 import { create } from 'zustand'
+import { LAYOUT } from './utils/layoutConstants'
 
 export interface ChatMessage {
   id: string;
@@ -49,7 +50,7 @@ export const useAppStore = create<AppState>((set) => ({
   // Debug State
   isDebugDrawerOpen: false,
   setDebugDrawerOpen: (isOpen) => set({ isDebugDrawerOpen: isOpen }),
-  debugRowMaxWidth: 10000,
+  debugRowMaxWidth: LAYOUT.ROW_MAX_WIDTH,
   setDebugRowMaxWidth: (width) => set({ debugRowMaxWidth: width }),
 
   // Agent State
