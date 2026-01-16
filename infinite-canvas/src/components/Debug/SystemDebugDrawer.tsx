@@ -188,7 +188,7 @@ export const SafeViewportOverlay = () => {
                     fontSize: 12,
                     fontWeight: 600
                 }}>
-                    Safe Viewport
+                    安全视口
                 </span>
             </div>
         </div>

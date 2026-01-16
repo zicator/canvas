@@ -11,9 +11,34 @@ import { CustomStylePanel } from '../Toolbar/CustomStylePanel'
 import { SystemDebugDrawer, SafeViewportOverlay } from '../Debug/SystemDebugDrawer'
 import { RiChat1Line } from '@remixicon/react'
 import { calculateNextPosition } from '../../utils/autoLayout'
-import { LAYOUT, ASSET_RESOLUTIONS } from '../../utils/layoutConstants'
-import type { AspectRatio } from '../../utils/layoutConstants'
+import { LAYOUT } from '../../utils/layoutConstants'
+import { calculateDimensions } from '../../utils/resolutionLogic'
 
+// Bezier Easing Function for cubic-bezier(0.4, 0, 0.2, 1)
+const cubicBezier = (p1x: number, p1y: number, p2x: number, p2y: number) => {
+    const cx = 3 * p1x
+    const bx = 3 * (p2x - p1x) - cx
+    const ax = 1 - cx - bx
+    const cy = 3 * p1y
+    const by = 3 * (p2y - p1y) - cy
+    const ay = 1 - cy - by
+    const sampleCurveX = (t: number) => ((ax * t + bx) * t + cx) * t
+    const sampleCurveY = (t: number) => ((ay * t + by) * t + cy) * t
+    const sampleCurveDerivativeX = (t: number) => (3 * ax * t + 2 * bx) * t + cx
+    const solveCurveX = (x: number) => {
+        let t2 = x
+        for (let i = 0; i < 8; i++) {
+            const x2 = sampleCurveX(t2) - x
+            if (Math.abs(x2) < 1e-6) return t2
+            const d2 = sampleCurveDerivativeX(t2)
+            if (Math.abs(d2) < 1e-6) break
+            t2 = t2 - x2 / d2
+        }
+        return t2
+    }
+    return (x: number) => sampleCurveY(solveCurveX(x))
+}
+const customEase = cubicBezier(0.4, 0, 0.2, 1)
 
 const service = new MockGenerationService()
 
@@ -57,18 +82,31 @@ export const MainLayout = () => {
         const currentPrompt = prompt.trim() || 'Random Generation'
         setPrompt('') // Clear input immediately
 
+        // Open sidebar if closed so user sees the chat
+        // if (!isSidebarOpen) {
+        //    setSidebarOpen(true)
+        // }
+
         // 1. Calculate dimensions based on settings
-        const resolutionConfig = ASSET_RESOLUTIONS[settings.aspectRatio as AspectRatio] || ASSET_RESOLUTIONS['1:1']
-        const assetWidth = resolutionConfig.width
-        const assetHeight = resolutionConfig.height
+        const { layout, generation } = calculateDimensions(settings.aspectRatio, settings.resolution)
+        
+        console.log('[MainLayout] Generation started', { 
+            settings, 
+            layout, 
+            generation 
+        })
 
         // Calculate Board Dimensions
+        // Padding: 188px
+        // Inner Gap: 32px
+        // Content Layout: 4 items per row grid
+        
         const count = settings.count
         const cols = Math.min(count, 4)
         const rows = Math.ceil(count / cols)
         
-        const contentWidth = cols * assetWidth + (cols - 1) * LAYOUT.INNER_GAP
-        const contentHeight = rows * assetHeight + (rows - 1) * LAYOUT.INNER_GAP
+        const contentWidth = cols * layout.width + (cols - 1) * LAYOUT.INNER_GAP
+        const contentHeight = rows * layout.height + (rows - 1) * LAYOUT.INNER_GAP
         
         const boardWidth = contentWidth + LAYOUT.BOARD_PADDING * 2
         const boardHeight = contentHeight + LAYOUT.BOARD_PADDING * 2
@@ -117,8 +155,8 @@ export const MainLayout = () => {
             const r = Math.floor(i / cols)
             const c = i % cols
             positions.push({
-                x: LAYOUT.BOARD_PADDING + c * (assetWidth + LAYOUT.INNER_GAP),
-                y: LAYOUT.BOARD_PADDING + r * (assetHeight + LAYOUT.INNER_GAP)
+                x: LAYOUT.BOARD_PADDING + c * (layout.width + LAYOUT.INNER_GAP),
+                y: LAYOUT.BOARD_PADDING + r * (layout.height + LAYOUT.INNER_GAP)
             })
         }
 
@@ -134,8 +172,8 @@ export const MainLayout = () => {
                 y: pos.y,
                 parentId: boardId, // Important: Parenting
                 props: {
-                    w: assetWidth,
-                    h: assetHeight,
+                    w: layout.width,
+                    h: layout.height,
                     fill: 'pattern',
                 }
             })
@@ -149,22 +187,41 @@ export const MainLayout = () => {
         const zoom = editor.getZoomLevel()
 
         // Safe Viewport Padding
-        const topPadding = 80
-        const leftPadding = 80
+        const topPadding = 160
+        const leftPadding = 160
         const bottomPadding = 160
-        const rightPadding = isSidebarOpen ? 400 : 80
+        const rightPadding = 160
+        
+            // Calculate Safe Viewport in Page Coordinates
+        const viewportScreenBounds = editor.getViewportScreenBounds()
+        
+        // Define safe area in SCREEN coordinates
+        const safeArea = {
+            top: 80,
+            left: 80,
+            bottom: 160,
+            right: isSidebarOpen ? 400 : 80
+        }
 
-        // Calculate Safe Viewport in Page Coordinates
-        const safeMinX = viewportPageBounds.minX + leftPadding / zoom
-        const safeMinY = viewportPageBounds.minY + topPadding / zoom
-        const safeMaxX = viewportPageBounds.maxX - rightPadding / zoom
-        const safeMaxY = viewportPageBounds.maxY - bottomPadding / zoom
+        const safeWidth = viewportScreenBounds.w - safeArea.left - safeArea.right
+        const safeHeight = viewportScreenBounds.h - safeArea.top - safeArea.bottom
+
+        // 1. Check if Union Bounds (Current + New) fits in CURRENT safe viewport
+        // We need to project the board into screen space to check visibility
+        // But simpler: check if board is within the "Page Safe Rect"
+        // Page Safe Rect = Viewport Page Bounds reduced by padding / zoom
+        
+        const currentZoom = editor.getZoomLevel()
+        const pageSafeMinX = viewportPageBounds.minX + safeArea.left / currentZoom
+        const pageSafeMinY = viewportPageBounds.minY + safeArea.top / currentZoom
+        const pageSafeMaxX = viewportPageBounds.maxX - safeArea.right / currentZoom
+        const pageSafeMaxY = viewportPageBounds.maxY - safeArea.bottom / currentZoom
 
         const isInside = 
-            boardX >= safeMinX &&
-            (boardX + boardWidth) <= safeMaxX &&
-            boardY >= safeMinY &&
-            (boardY + boardHeight) <= safeMaxY
+            boardX >= pageSafeMinX &&
+            (boardX + boardWidth) <= pageSafeMaxX &&
+            boardY >= pageSafeMinY &&
+            (boardY + boardHeight) <= pageSafeMaxY
 
         if (isInside) {
             console.log('[MainLayout] Content inside safe viewport, skipping zoom')
@@ -172,65 +229,47 @@ export const MainLayout = () => {
             console.log('[MainLayout] Content outside safe viewport, adjusting camera')
             
             // Calculate Union Bounds (Current Viewport + New Content)
-            // Note: We use the Safe Current Viewport (not full viewport) to avoid including obscured areas
-            const safeCurrentBounds = {
-                minX: safeMinX,
-                minY: safeMinY,
-                maxX: safeMaxX,
-                maxY: safeMaxY
-            }
-
             const unionBounds = {
-                minX: Math.min(safeCurrentBounds.minX, boardX),
-                minY: Math.min(safeCurrentBounds.minY, boardY),
-                maxX: Math.max(safeCurrentBounds.maxX, boardX + boardWidth),
-                maxY: Math.max(safeCurrentBounds.maxY, boardY + boardHeight),
-                width: 0, height: 0
+                minX: Math.min(viewportPageBounds.minX, boardX),
+                minY: Math.min(viewportPageBounds.minY, boardY),
+                maxX: Math.max(viewportPageBounds.maxX, boardX + boardWidth),
+                maxY: Math.max(viewportPageBounds.maxY, boardY + boardHeight),
+                w: 0, h: 0
             }
-            unionBounds.width = unionBounds.maxX - unionBounds.minX
-            unionBounds.height = unionBounds.maxY - unionBounds.minY
+            unionBounds.w = unionBounds.maxX - unionBounds.minX
+            unionBounds.h = unionBounds.maxY - unionBounds.minY
 
-            // Calculate Target Zoom to fit Union Bounds into Available Screen Space
-            const viewportScreenBounds = editor.getViewportScreenBounds()
-            const { w: screenW, h: screenH } = viewportScreenBounds
+            // Calculate Target Zoom to fit UnionBounds into SafeScreenArea
+            const zoomW = safeWidth / unionBounds.w
+            const zoomH = safeHeight / unionBounds.h
+            // Use the smaller zoom to ensure full containment
+            // Clamp to avoid extreme zooms (e.g. too close or too far) if needed, 
+            // but for "Fit" we usually just take the min.
+            // Also maintain a bit of extra buffer (e.g. 0.95) if desired, but padding is already in safeArea.
+            let targetZoom = Math.min(zoomW, zoomH)
             
-            const availableW = screenW - leftPadding - rightPadding
-            const availableH = screenH - topPadding - bottomPadding
+            // Optional: Clamp zoom to reasonable limits (e.g., don't zoom in past 100% if content is tiny?)
+            // For now, let's respect the "Fit" requirement strictly.
 
-            if (availableW > 0 && availableH > 0) {
-                // Add a small internal inset (20px) so content doesn't touch the safety lines exactly
-                const internalInset = 20
-                const targetW = availableW - internalInset * 2
-                const targetH = availableH - internalInset * 2
+            // Calculate Target Camera Position
+            // We want the Center of UnionBounds (Page) to be at the Center of SafeArea (Screen)
+            
+            const unionCenterPageX = unionBounds.minX + unionBounds.w / 2
+            const unionCenterPageY = unionBounds.minY + unionBounds.h / 2
+            
+            const safeCenterScreenX = safeArea.left + safeWidth / 2
+            const safeCenterScreenY = safeArea.top + safeHeight / 2
 
-                const zoomX = targetW / unionBounds.width
-                const zoomY = targetH / unionBounds.height
-                let targetZoom = Math.min(zoomX, zoomY)
+            // Camera Model: ScreenX = (PageX + CameraX) * Zoom
+            // => CameraX = ScreenX / Zoom - PageX
+            const targetCameraX = safeCenterScreenX / targetZoom - unionCenterPageX
+            const targetCameraY = safeCenterScreenY / targetZoom - unionCenterPageY
 
-                // Clamp zoom to reasonable limits
-                // Ensure we don't zoom in too much (e.g. > 1) if content is small
-                // But allow zooming out as much as needed
-                targetZoom = Math.min(targetZoom, 1)
-                
-                // Calculate center of the Union Bounds in Page Space
-                const contentCenterX = unionBounds.minX + unionBounds.width / 2
-                const contentCenterY = unionBounds.minY + unionBounds.height / 2
-
-                // Calculate center of the Safe Area in Screen Space
-                const safeCenterX = leftPadding + availableW / 2
-                const safeCenterY = topPadding + availableH / 2
-
-                // Calculate Target Camera Position
-                // Formula: screenX = (pageX - cameraX) * zoom  =>  cameraX = pageX - screenX / zoom
-                const targetCameraX = contentCenterX - safeCenterX / targetZoom
-                const targetCameraY = contentCenterY - safeCenterY / targetZoom
-
-                editor.setCamera({
-                    x: targetCameraX,
-                    y: targetCameraY,
-                    z: targetZoom
-                }, { animation: { duration: 300, easing: (t) => t * (2 - t) } }) // EaseOutQuad
-            }
+            editor.setCamera({
+                x: targetCameraX,
+                y: targetCameraY,
+                z: targetZoom
+            }, { animation: { duration: 500, easing: customEase } })
         }
 
         try {
@@ -238,8 +277,8 @@ export const MainLayout = () => {
             if (count === 1) {
                 const res = await service.generate({
                     prompt: currentPrompt,
-                    width: assetWidth,
-                    height: assetHeight,
+                    width: generation.width,
+                    height: generation.height,
                     seed: Math.floor(Math.random() * 100000)
                 })
                 updateMessage(assistantMsgId, { status: 'success', imageUrl: res.url })
@@ -255,8 +294,8 @@ export const MainLayout = () => {
                         type: 'image',
                         meta: {},
                         props: {
-                            w: assetWidth,
-                            h: assetHeight,
+                            w: generation.width,
+                            h: generation.height,
                             mimeType: 'image/png',
                             src: res.url,
                             name: 'Generated Image',
@@ -271,8 +310,8 @@ export const MainLayout = () => {
                         y: positions[0].y,
                         parentId: boardId,
                         props: {
-                            w: assetWidth,
-                            h: assetHeight,
+                            w: layout.width,
+                            h: layout.height,
                             assetId: assetId
                         }
                     })
@@ -281,8 +320,8 @@ export const MainLayout = () => {
                 const promises = Array(count).fill(0).map(() =>
                     service.generate({
                         prompt: currentPrompt,
-                        width: assetWidth,
-                        height: assetHeight,
+                        width: generation.width,
+                        height: generation.height,
                         seed: Math.floor(Math.random() * 100000)
                     })
                 )
@@ -300,8 +339,8 @@ export const MainLayout = () => {
                             type: 'image',
                             meta: {},
                             props: {
-                                w: assetWidth,
-                                h: assetHeight,
+                                w: generation.width,
+                                h: generation.height,
                                 mimeType: 'image/png',
                                 src: url,
                                 name: `Generated Image ${idx + 1}`,
@@ -316,18 +355,13 @@ export const MainLayout = () => {
                             y: positions[idx].y,
                             parentId: boardId,
                             props: {
-                                w: assetWidth,
-                                h: assetHeight,
+                                w: layout.width,
+                                h: layout.height,
                                 assetId: assetId
                             }
                         })
                     }
                 })
-            }
-
-            // Select the newly created board to highlight the result
-            if (editor.getShape(boardId)) {
-                editor.select(boardId)
             }
 
         } catch (e) {

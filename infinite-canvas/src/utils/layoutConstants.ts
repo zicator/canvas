@@ -19,4 +19,10 @@ export const ASSET_RESOLUTIONS = {
     '9:16': { width: 1440, height: 2560, label: '9:16' },
 } as const
 
+// 4K Multiplier
+export const RESOLUTION_MULTIPLIER = {
+    '2k': 1,
+    '4k': 2
+} as const
+
 export type AspectRatio = keyof typeof ASSET_RESOLUTIONS

@@ -56,6 +56,12 @@ body,
        Here we ensure transparency as requested. */
 }
 
+.tl-frame-heading-hit-area {
+    background-color: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+}
+
 /* Ensure label text is visible */
 .tl-frame-label {
     background-color: transparent !important;

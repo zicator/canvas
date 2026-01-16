@@ -16,6 +16,7 @@ export interface GenerationSettings {
   aspectRatio: '1:1' | '16:9' | '4:3';
   resolution: '2k' | '4k';
   count: 1 | 4;
+  type: 'image' | 'video';
 }
 
 interface AppState {
@@ -67,7 +68,8 @@ export const useAppStore = create<AppState>()(
       settings: {
         aspectRatio: '1:1',
         resolution: '2k',
-        count: 1
+        count: 4,
+        type: 'image'
       },
       setSettings: (updates) => set((state) => ({
         settings: { ...state.settings, ...updates }
