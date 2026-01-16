@@ -4,7 +4,7 @@ export const LAYOUT = {
     INNER_GAP: 32,
     BOARD_GAP_X: 480,
     ROW_GAP_Y: 800,
-    ROW_MAX_WIDTH: 10000,
+    ROW_MAX_WIDTH: 15000,
 }
 
 // Asset Resolutions (Based on 2K standard)

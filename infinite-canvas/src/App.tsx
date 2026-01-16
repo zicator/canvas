@@ -15,6 +15,9 @@ function App() {
                 cameraOptions={{
                     zoomSteps: [0.01, 0.05, 0.1, 0.25, 0.5, 1, 2, 4, 8],
                 }}
+                onMount={(editor) => {
+                    editor.setCamera({ x: 0, y: 0, z: 0.04 })
+                }}
             >
                 <MainLayout />
             </Tldraw>
