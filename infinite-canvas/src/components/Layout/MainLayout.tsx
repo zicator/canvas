@@ -57,22 +57,12 @@ export const MainLayout = () => {
         const currentPrompt = prompt.trim() || 'Random Generation'
         setPrompt('') // Clear input immediately
 
-        // Open sidebar if closed so user sees the chat
-        // if (!isSidebarOpen) {
-        //    setSidebarOpen(true)
-        // }
-
         // 1. Calculate dimensions based on settings
-        // Default to 1:1 if not found
         const resolutionConfig = ASSET_RESOLUTIONS[settings.aspectRatio as AspectRatio] || ASSET_RESOLUTIONS['1:1']
         const assetWidth = resolutionConfig.width
         const assetHeight = resolutionConfig.height
 
         // Calculate Board Dimensions
-        // Padding: 188px
-        // Inner Gap: 32px
-        // Content Layout: 4 items per row grid
-        
         const count = settings.count
         const cols = Math.min(count, 4)
         const rows = Math.ceil(count / cols)
@@ -182,27 +172,65 @@ export const MainLayout = () => {
             console.log('[MainLayout] Content outside safe viewport, adjusting camera')
             
             // Calculate Union Bounds (Current Viewport + New Content)
-            const unionBounds = {
-                minX: Math.min(viewportPageBounds.minX, boardX),
-                minY: Math.min(viewportPageBounds.minY, boardY),
-                maxX: Math.max(viewportPageBounds.maxX, boardX + boardWidth),
-                maxY: Math.max(viewportPageBounds.maxY, boardY + boardHeight),
-                w: 0, h: 0, x: 0, y: 0
+            // Note: We use the Safe Current Viewport (not full viewport) to avoid including obscured areas
+            const safeCurrentBounds = {
+                minX: safeMinX,
+                minY: safeMinY,
+                maxX: safeMaxX,
+                maxY: safeMaxY
             }
-            unionBounds.w = unionBounds.maxX - unionBounds.minX
-            unionBounds.h = unionBounds.maxY - unionBounds.minY
-            unionBounds.x = unionBounds.minX
-            unionBounds.y = unionBounds.minY
 
-            // Use the largest padding to ensure content is fully visible within the safe area
-            // Ideally we would specify different insets for each side, but zoomToBounds takes a single number.
-            // Using the max padding is a safe fallback.
-            const maxPadding = Math.max(topPadding, leftPadding, bottomPadding, rightPadding)
+            const unionBounds = {
+                minX: Math.min(safeCurrentBounds.minX, boardX),
+                minY: Math.min(safeCurrentBounds.minY, boardY),
+                maxX: Math.max(safeCurrentBounds.maxX, boardX + boardWidth),
+                maxY: Math.max(safeCurrentBounds.maxY, boardY + boardHeight),
+                width: 0, height: 0
+            }
+            unionBounds.width = unionBounds.maxX - unionBounds.minX
+            unionBounds.height = unionBounds.maxY - unionBounds.minY
 
-            editor.zoomToBounds(unionBounds, { 
-                inset: maxPadding,
-                animation: { duration: 300 } // Tldraw's default easing is usually good (easeInOutCubic)
-            })
+            // Calculate Target Zoom to fit Union Bounds into Available Screen Space
+            const viewportScreenBounds = editor.getViewportScreenBounds()
+            const { w: screenW, h: screenH } = viewportScreenBounds
+            
+            const availableW = screenW - leftPadding - rightPadding
+            const availableH = screenH - topPadding - bottomPadding
+
+            if (availableW > 0 && availableH > 0) {
+                // Add a small internal inset (20px) so content doesn't touch the safety lines exactly
+                const internalInset = 20
+                const targetW = availableW - internalInset * 2
+                const targetH = availableH - internalInset * 2
+
+                const zoomX = targetW / unionBounds.width
+                const zoomY = targetH / unionBounds.height
+                let targetZoom = Math.min(zoomX, zoomY)
+
+                // Clamp zoom to reasonable limits
+                // Ensure we don't zoom in too much (e.g. > 1) if content is small
+                // But allow zooming out as much as needed
+                targetZoom = Math.min(targetZoom, 1)
+                
+                // Calculate center of the Union Bounds in Page Space
+                const contentCenterX = unionBounds.minX + unionBounds.width / 2
+                const contentCenterY = unionBounds.minY + unionBounds.height / 2
+
+                // Calculate center of the Safe Area in Screen Space
+                const safeCenterX = leftPadding + availableW / 2
+                const safeCenterY = topPadding + availableH / 2
+
+                // Calculate Target Camera Position
+                // Formula: screenX = (pageX - cameraX) * zoom  =>  cameraX = pageX - screenX / zoom
+                const targetCameraX = contentCenterX - safeCenterX / targetZoom
+                const targetCameraY = contentCenterY - safeCenterY / targetZoom
+
+                editor.setCamera({
+                    x: targetCameraX,
+                    y: targetCameraY,
+                    z: targetZoom
+                }, { animation: { duration: 300, easing: (t) => t * (2 - t) } }) // EaseOutQuad
+            }
         }
 
         try {
@@ -295,6 +323,11 @@ export const MainLayout = () => {
                         })
                     }
                 })
+            }
+
+            // Select the newly created board to highlight the result
+            if (editor.getShape(boardId)) {
+                editor.select(boardId)
             }
 
         } catch (e) {
