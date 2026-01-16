@@ -77,6 +77,24 @@
     - 提取重复代码为公共函数
     - 优化类型定义
 
+## Phase 6: 视口控制与开发者工具
+
+- [x] **视口状态管理** <!-- id: 12 -->
+    - 在 store.ts 中添加 `showSafeViewport` 状态
+    - 实现该状态的持久化 (persist)
+    - 确保与现有 debugRowMaxWidth 状态兼容
+
+- [x] **视口逻辑实现** <!-- id: 13 -->
+    - 实现安全视口计算函数 `calculateSafeViewport` (动态 padding)
+    - 实现 `shouldFitViewport` 判定逻辑 (规则 A/B)
+    - 实现 `calculateUnionBounds` 逻辑
+    - 应用 300ms 缓动过渡效果
+
+- [x] **Debug UI 增强** <!-- id: 14 -->
+    - 将 SystemDebugDrawer 入口改为顶部导航栏 "开发者模式"
+    - 添加 "展示安全视口" 开关
+    - 实现安全视口可视化 Overlay (半透明层)
+
 ## 验证清单
 
 完成所有任务后，需要验证以下功能点：

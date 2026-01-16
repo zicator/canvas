@@ -9,7 +9,9 @@ export const SystemDebugDrawer = () => {
         isDebugDrawerOpen, 
         setDebugDrawerOpen,
         debugRowMaxWidth,
-        setDebugRowMaxWidth
+        setDebugRowMaxWidth,
+        showSafeViewport,
+        setShowSafeViewport
     } = useAppStore()
 
     // Visualize the wrap line
@@ -117,6 +119,77 @@ export const SystemDebugDrawer = () => {
                         Preview Mode: Adjusting the slider will affect the next generation's layout calculation.
                     </div>
                 </div>
+
+                <div style={{ marginBottom: 24 }}>
+                    <h3 style={{ fontSize: 14, fontWeight: 600, marginBottom: 12 }}>Visual Debug</h3>
+                    
+                    <div style={{ marginBottom: 16 }}>
+                         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                            <label style={{ fontSize: 12, color: '#64748b' }}>
+                                Show Safe Viewport
+                            </label>
+                            <input
+                                type="checkbox"
+                                checked={showSafeViewport}
+                                onChange={(e) => setShowSafeViewport(e.target.checked)}
+                                style={{ cursor: 'pointer' }}
+                            />
+                        </div>
+                        <p style={{ fontSize: 11, color: '#94a3b8', marginTop: 4 }}>
+                            Visualize the safe area and padding used for auto-zoom.
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    )
+}
+
+export const SafeViewportOverlay = () => {
+    const { showSafeViewport, isSidebarOpen } = useAppStore()
+    
+    if (!showSafeViewport) return null
+
+    const top = 80
+    const left = 80
+    const bottom = 160
+    const right = isSidebarOpen ? 400 : 80
+
+    return (
+        <div style={{
+            position: 'fixed',
+            inset: 0,
+            pointerEvents: 'none',
+            zIndex: 9999, // Very high z-index to show on top of everything
+            borderStyle: 'solid',
+            borderColor: 'rgba(255, 0, 0, 0.1)',
+            borderTopWidth: top,
+            borderLeftWidth: left,
+            borderBottomWidth: bottom,
+            borderRightWidth: right,
+            boxSizing: 'border-box',
+        }}>
+            <div style={{
+                position: 'absolute',
+                top: 0,
+                left: 0,
+                right: 0,
+                bottom: 0,
+                border: '2px dashed rgba(255, 0, 0, 0.3)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center'
+            }}>
+                <span style={{ 
+                    backgroundColor: 'rgba(255, 0, 0, 0.1)', 
+                    color: 'rgba(255, 0, 0, 0.6)', 
+                    padding: '4px 8px', 
+                    borderRadius: 4,
+                    fontSize: 12,
+                    fontWeight: 600
+                }}>
+                    Safe Viewport
+                </span>
             </div>
         </div>
     )

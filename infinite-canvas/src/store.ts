@@ -1,4 +1,5 @@
 import { create } from 'zustand'
+import { persist } from 'zustand/middleware'
 import { LAYOUT } from './utils/layoutConstants'
 
 export interface ChatMessage {
@@ -37,42 +38,57 @@ interface AppState {
   // Debug State
   isDebugDrawerOpen: boolean;
   setDebugDrawerOpen: (isOpen: boolean) => void;
+  showSafeViewport: boolean;
+  setShowSafeViewport: (show: boolean) => void;
   debugRowMaxWidth: number;
   setDebugRowMaxWidth: (width: number) => void;
 }
 
-export const useAppStore = create<AppState>((set) => ({
-  // UI State
-  isSidebarOpen: false,
-  setSidebarOpen: (isOpen) => set({ isSidebarOpen: isOpen }),
-  toggleSidebar: () => set((state) => ({ isSidebarOpen: !state.isSidebarOpen })),
+export const useAppStore = create<AppState>()(
+  persist(
+    (set) => ({
+      // UI State
+      isSidebarOpen: false,
+      setSidebarOpen: (isOpen) => set({ isSidebarOpen: isOpen }),
+      toggleSidebar: () => set((state) => ({ isSidebarOpen: !state.isSidebarOpen })),
 
-  // Debug State
-  isDebugDrawerOpen: false,
-  setDebugDrawerOpen: (isOpen) => set({ isDebugDrawerOpen: isOpen }),
-  debugRowMaxWidth: LAYOUT.ROW_MAX_WIDTH,
-  setDebugRowMaxWidth: (width) => set({ debugRowMaxWidth: width }),
+      // Debug State
+      isDebugDrawerOpen: false,
+      setDebugDrawerOpen: (isOpen) => set({ isDebugDrawerOpen: isOpen }),
+      showSafeViewport: false,
+      setShowSafeViewport: (show) => set({ showSafeViewport: show }),
+      debugRowMaxWidth: LAYOUT.ROW_MAX_WIDTH,
+      setDebugRowMaxWidth: (width) => set({ debugRowMaxWidth: width }),
 
-  // Agent State
-  prompt: '',
-  setPrompt: (text) => set({ prompt: text }),
+      // Agent State
+      prompt: '',
+      setPrompt: (text) => set({ prompt: text }),
 
-  settings: {
-    aspectRatio: '1:1',
-    resolution: '2k',
-    count: 1
-  },
-  setSettings: (updates) => set((state) => ({
-    settings: { ...state.settings, ...updates }
-  })),
+      settings: {
+        aspectRatio: '1:1',
+        resolution: '2k',
+        count: 1
+      },
+      setSettings: (updates) => set((state) => ({
+        settings: { ...state.settings, ...updates }
+      })),
 
-  chatHistory: [],
-  addMessage: (msg) => set((state) => ({
-    chatHistory: [...state.chatHistory, msg]
-  })),
-  updateMessage: (id, updates) => set((state) => ({
-    chatHistory: state.chatHistory.map(msg =>
-      msg.id === id ? { ...msg, ...updates } : msg
-    )
-  }))
-}))
+      chatHistory: [],
+      addMessage: (msg) => set((state) => ({
+        chatHistory: [...state.chatHistory, msg]
+      })),
+      updateMessage: (id, updates) => set((state) => ({
+        chatHistory: state.chatHistory.map(msg =>
+          msg.id === id ? { ...msg, ...updates } : msg
+        )
+      }))
+    }),
+    {
+      name: 'app-storage',
+      partialize: (state) => ({
+        showSafeViewport: state.showSafeViewport,
+        debugRowMaxWidth: state.debugRowMaxWidth
+      })
+    }
+  )
+)

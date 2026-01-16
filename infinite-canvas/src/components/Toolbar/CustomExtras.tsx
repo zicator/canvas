@@ -43,33 +43,18 @@ export const CustomExtras = track(() => {
                         display: 'flex',
                         flexDirection: 'column'
                     }}>
-                        <button
-                            onClick={() => {
-                                setDebugDrawerOpen(true)
-                                setIsMenuOpen(false)
-                            }}
-                            style={{
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: 8,
-                                padding: '8px 12px',
-                                fontSize: 13,
-                                color: '#333',
-                                border: 'none',
-                                background: 'transparent',
-                                cursor: 'pointer',
-                                textAlign: 'left',
-                                borderRadius: 4,
-                            }}
-                            onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#f1f5f9'}
-                            onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
-                        >
-                            <RiBugLine size={16} />
-                            System Debug
-                        </button>
+                        <div style={{ padding: '8px 12px', fontSize: 13, color: '#94a3b8' }}>
+                            More options coming soon...
+                        </div>
                     </div>
                 )}
             </div>
+            <div style={{ width: 1, height: 24, backgroundColor: '#e2e8f0', margin: '0 4px' }} />
+            <IconButton 
+                icon={<RiBugLine size={18} />} 
+                onClick={() => setDebugDrawerOpen(true)} 
+                title="开发者模式"
+            />
             <div style={{ width: 1, height: 24, backgroundColor: '#e2e8f0', margin: '0 4px' }} />
             <IconButton 
                 icon={<RiArrowGoBackLine size={18} />} 

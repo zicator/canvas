@@ -8,7 +8,7 @@ import { MockGenerationService } from '../../services/MockGenerationService'
 import { CustomToolbar } from '../Toolbar/CustomToolbar'
 import { CustomExtras } from '../Toolbar/CustomExtras'
 import { CustomStylePanel } from '../Toolbar/CustomStylePanel'
-import { SystemDebugDrawer } from '../Debug/SystemDebugDrawer'
+import { SystemDebugDrawer, SafeViewportOverlay } from '../Debug/SystemDebugDrawer'
 import { RiChat1Line } from '@remixicon/react'
 import { calculateNextPosition } from '../../utils/autoLayout'
 import { LAYOUT, ASSET_RESOLUTIONS } from '../../utils/layoutConstants'
@@ -152,51 +152,58 @@ export const MainLayout = () => {
         })
         
         // 7. Viewport Follow Logic
-        // "若产物完全在视口内且长边 > 240px，视口不动"
-        // "若产物完全在视口内且长边 < 240px，缩放"
-        // "超出视口，增量 fit"
-        
-        const viewport = editor.getViewportPageBounds()
-        const boardBounds = {
-            minX: boardX,
-            minY: boardY,
-            maxX: boardX + boardWidth,
-            maxY: boardY + boardHeight,
-            width: boardWidth,
-            height: boardHeight,
-            x: boardX,
-            y: boardY
+        // Rule A: Inside Viewport -> Do nothing
+        // Rule B: Outside Viewport -> Union Fit
+
+        const viewportPageBounds = editor.getViewportPageBounds()
+        const zoom = editor.getZoomLevel()
+
+        // Safe Viewport Padding
+        const topPadding = 80
+        const leftPadding = 80
+        const bottomPadding = 160
+        const rightPadding = isSidebarOpen ? 400 : 80
+
+        // Calculate Safe Viewport in Page Coordinates
+        const safeMinX = viewportPageBounds.minX + leftPadding / zoom
+        const safeMinY = viewportPageBounds.minY + topPadding / zoom
+        const safeMaxX = viewportPageBounds.maxX - rightPadding / zoom
+        const safeMaxY = viewportPageBounds.maxY - bottomPadding / zoom
+
+        const isInside = 
+            boardX >= safeMinX &&
+            (boardX + boardWidth) <= safeMaxX &&
+            boardY >= safeMinY &&
+            (boardY + boardHeight) <= safeMaxY
+
+        if (isInside) {
+            console.log('[MainLayout] Content inside safe viewport, skipping zoom')
+        } else {
+            console.log('[MainLayout] Content outside safe viewport, adjusting camera')
+            
+            // Calculate Union Bounds (Current Viewport + New Content)
+            const unionBounds = {
+                minX: Math.min(viewportPageBounds.minX, boardX),
+                minY: Math.min(viewportPageBounds.minY, boardY),
+                maxX: Math.max(viewportPageBounds.maxX, boardX + boardWidth),
+                maxY: Math.max(viewportPageBounds.maxY, boardY + boardHeight),
+                w: 0, h: 0, x: 0, y: 0
+            }
+            unionBounds.w = unionBounds.maxX - unionBounds.minX
+            unionBounds.h = unionBounds.maxY - unionBounds.minY
+            unionBounds.x = unionBounds.minX
+            unionBounds.y = unionBounds.minY
+
+            // Use the largest padding to ensure content is fully visible within the safe area
+            // Ideally we would specify different insets for each side, but zoomToBounds takes a single number.
+            // Using the max padding is a safe fallback.
+            const maxPadding = Math.max(topPadding, leftPadding, bottomPadding, rightPadding)
+
+            editor.zoomToBounds(unionBounds, { 
+                inset: maxPadding,
+                animation: { duration: 300 } // Tldraw's default easing is usually good (easeInOutCubic)
+            })
         }
-        
-        // Check visibility
-        const isFullyVisible = viewport.contains(boardBounds as any)
-        const longSide = Math.max(boardWidth, boardHeight)
-        
-        if (isFullyVisible) {
-             if (longSide < 240) {
-                  editor.zoomToBounds(boardBounds as any, { targetZoom: undefined, animation: { duration: 300 }, inset: 50 })
-             }
-             // else do nothing
-         } else {
-             // Not fully visible -> Incremental fit
-             // "计算【原视口+新产物】的包围盒"
-             
-             const unionBounds = {
-                 minX: Math.min(viewport.minX, boardX),
-                 minY: Math.min(viewport.minY, boardY),
-                 maxX: Math.max(viewport.maxX, boardX + boardWidth),
-                 maxY: Math.max(viewport.maxY, boardY + boardHeight),
-                 width: 0, 
-                 height: 0, x:0, y:0
-             }
-             unionBounds.width = unionBounds.maxX - unionBounds.minX
-             unionBounds.height = unionBounds.maxY - unionBounds.minY
-             unionBounds.x = unionBounds.minX
-             unionBounds.y = unionBounds.minY
-             
-             // Use a reasonable inset to ensure content is not at the very edge
-             editor.zoomToBounds(unionBounds as any, { animation: { duration: 500 }, inset: 50 })
-         }
 
         try {
             // Call Service
@@ -333,6 +340,7 @@ export const MainLayout = () => {
     return (
         <>
             <SystemDebugDrawer />
+            <SafeViewportOverlay />
             <CustomToolbar />
             <CustomExtras />
             <CustomStylePanel />
