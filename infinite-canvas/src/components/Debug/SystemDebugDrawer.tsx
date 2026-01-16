@@ -1,6 +1,6 @@
 import { useAppStore } from '../../store'
 import { RiCloseLine } from '@remixicon/react'
-import { useEditor, createShapeId } from 'tldraw'
+import { useEditor } from 'tldraw'
 import { useEffect } from 'react'
 
 export const SystemDebugDrawer = () => {
@@ -16,7 +16,7 @@ export const SystemDebugDrawer = () => {
     useEffect(() => {
         if (!isDebugDrawerOpen) return
 
-        const id = createShapeId('debug-wrap-line')
+        // const id = createShapeId('debug-wrap-line')
         
         // Create or update the line
         // We draw a vertical dashed line at x = debugRowMaxWidth

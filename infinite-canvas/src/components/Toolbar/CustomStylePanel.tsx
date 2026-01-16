@@ -1,4 +1,4 @@
-import { useEditor, useValue, DefaultColorStyle, DefaultFillStyle, DefaultDashStyle, DefaultSizeStyle, GeoShapeGeoStyle } from 'tldraw'
+import { useEditor, DefaultColorStyle, DefaultFillStyle, DefaultDashStyle, DefaultSizeStyle } from 'tldraw'
 import { track } from 'tldraw'
 import { RiPaletteLine, RiPaintFill, RiRulerLine, RiDashboardLine } from '@remixicon/react'
 
