@@ -1,0 +1,63 @@
+:root {
+    --bg-color: #0f172a;
+    --dots-color: #334155;
+    --text-primary: #f8fafc;
+}
+
+
+html,
+body,
+#root {
+    margin: 0;
+    padding: 0;
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    color: var(--text-primary);
+    background-color: var(--bg-color);
+}
+
+/* Infinite Grid Background */
+
+
+/* Button styles removed to restore default feel */
+
+.node-item {
+    /* Glassmorphism */
+    background: rgba(255, 255, 255, 0.1) !important;
+    /* Override inline for glass effect if desired, but dragging needs opacity */
+    /* Actually, let's stick to the inline color but add glass texture */
+    backdrop-filter: blur(12px);
+    border: 1px solid rgba(255, 255, 255, 0.2) !important;
+    box-shadow:
+        0 4px 6px -1px rgba(0, 0, 0, 0.1),
+        0 2px 4px -1px rgba(0, 0, 0, 0.06),
+        inset 0 1px 0 rgba(255, 255, 255, 0.1);
+    color: white !important;
+    transition: box-shadow 0.2s, border-color 0.2s;
+}
+
+.node-item:hover {
+    box-shadow:
+        0 10px 15px -3px rgba(0, 0, 0, 0.2),
+        0 4px 6px -2px rgba(0, 0, 0, 0.1),
+        inset 0 1px 0 rgba(255, 255, 255, 0.2);
+    border-color: rgba(255, 255, 255, 0.4) !important;
+}
+
+/* Custom Frame Title Styles */
+.tl-frame-heading {
+    background-color: transparent !important;
+    border: none !important;
+    /* Ensure it doesn't overlap content visually but stays readable */
+    z-index: 0 !important; 
+    /* Adjust positioning to not overlap content if possible, though Tldraw handles this via layout.
+       Here we ensure transparency as requested. */
+}
+
+/* Ensure label text is visible */
+.tl-frame-label {
+    background-color: transparent !important;
+    padding: 0 4px !important;
+}
