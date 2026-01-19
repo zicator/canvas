@@ -38,7 +38,9 @@ export const SystemDebugDrawer = () => {
         }
     }, [isDebugDrawerOpen, debugRowMaxWidth, editor])
 
-    if (!isDebugDrawerOpen) return null
+    // Build info
+    const buildTime = import.meta.env.VITE_BUILD_TIME || 'Dev'
+    const commitHash = import.meta.env.VITE_COMMIT_HASH || 'Local'
 
     return (
         <div style={{
@@ -62,7 +64,12 @@ export const SystemDebugDrawer = () => {
                 justifyContent: 'space-between',
                 alignItems: 'center'
             }}>
-                <h2 style={{ fontSize: 16, fontWeight: 600, margin: 0 }}>System Debug</h2>
+                <div>
+                    <h2 style={{ fontSize: 16, fontWeight: 600, margin: 0 }}>System Debug</h2>
+                    <div style={{ fontSize: 10, color: '#94a3b8', marginTop: 2 }}>
+                        v{commitHash.slice(0, 7)} ({buildTime})
+                    </div>
+                </div>
                 <button
                     onClick={() => setDebugDrawerOpen(false)}
                     style={{
