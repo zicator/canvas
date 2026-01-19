@@ -146,6 +146,9 @@ export const MainLayout = () => {
             }
         })
 
+        // Auto-select the new board
+        editor.select(boardId)
+
         // 6. Create Placeholder Assets inside the Board
         const assetIds: string[] = []
         const positions: {x: number, y: number}[] = []
@@ -242,34 +245,58 @@ export const MainLayout = () => {
             // Calculate Target Zoom to fit UnionBounds into SafeScreenArea
             const zoomW = safeWidth / unionBounds.w
             const zoomH = safeHeight / unionBounds.h
-            // Use the smaller zoom to ensure full containment
-            // Clamp to avoid extreme zooms (e.g. too close or too far) if needed, 
-            // but for "Fit" we usually just take the min.
-            // Also maintain a bit of extra buffer (e.g. 0.95) if desired, but padding is already in safeArea.
             let targetZoom = Math.min(zoomW, zoomH)
-            
-            // Optional: Clamp zoom to reasonable limits (e.g., don't zoom in past 100% if content is tiny?)
-            // For now, let's respect the "Fit" requirement strictly.
 
-            // Calculate Target Camera Position
-            // We want the Center of UnionBounds (Page) to be at the Center of SafeArea (Screen)
-            
-            const unionCenterPageX = unionBounds.minX + unionBounds.w / 2
-            const unionCenterPageY = unionBounds.minY + unionBounds.h / 2
-            
-            const safeCenterScreenX = safeArea.left + safeWidth / 2
-            const safeCenterScreenY = safeArea.top + safeHeight / 2
+            // Define Min Zoom (match App.tsx config)
+            const MIN_ZOOM = 0.01
 
-            // Camera Model: ScreenX = (PageX + CameraX) * Zoom
-            // => CameraX = ScreenX / Zoom - PageX
-            const targetCameraX = safeCenterScreenX / targetZoom - unionCenterPageX
-            const targetCameraY = safeCenterScreenY / targetZoom - unionCenterPageY
+            if (targetZoom < MIN_ZOOM) {
+                console.log('[MainLayout] Target zoom too small, panning to new content instead')
+                // Strategy: Pan to center the NEW board in the safe area, keeping current zoom (or min zoom)
+                // We focus on the *new board* (boardX, boardY, boardWidth, boardHeight)
+                
+                // Target: Board Center
+                const boardCenterPageX = boardX + boardWidth / 2
+                const boardCenterPageY = boardY + boardHeight / 2
 
-            editor.setCamera({
-                x: targetCameraX,
-                y: targetCameraY,
-                z: targetZoom
-            }, { animation: { duration: 500, easing: customEase } })
+                // Screen Target: Safe Area Center
+                const safeCenterScreenX = safeArea.left + safeWidth / 2
+                const safeCenterScreenY = safeArea.top + safeHeight / 2
+                
+                // Use current zoom or min zoom, whichever is appropriate (usually current zoom is fine if we just want to pan)
+                // But if current zoom is huge, maybe we want to zoom out a bit? 
+                // Requirement says: "if already zoomed to min, then pan".
+                // Let's use Math.max(currentZoom, MIN_ZOOM) to ensure we don't go below min.
+                const panZoom = Math.max(currentZoom, MIN_ZOOM)
+
+                const targetCameraX = safeCenterScreenX / panZoom - boardCenterPageX
+                const targetCameraY = safeCenterScreenY / panZoom - boardCenterPageY
+
+                editor.setCamera({
+                    x: targetCameraX,
+                    y: targetCameraY,
+                    z: panZoom
+                }, { animation: { duration: 500, easing: customEase } })
+
+            } else {
+                // Normal "Fit" Logic
+                // Calculate Target Camera Position to center the UnionBounds
+                
+                const unionCenterPageX = unionBounds.minX + unionBounds.w / 2
+                const unionCenterPageY = unionBounds.minY + unionBounds.h / 2
+                
+                const safeCenterScreenX = safeArea.left + safeWidth / 2
+                const safeCenterScreenY = safeArea.top + safeHeight / 2
+
+                const targetCameraX = safeCenterScreenX / targetZoom - unionCenterPageX
+                const targetCameraY = safeCenterScreenY / targetZoom - unionCenterPageY
+
+                editor.setCamera({
+                    x: targetCameraX,
+                    y: targetCameraY,
+                    z: targetZoom
+                }, { animation: { duration: 500, easing: customEase } })
+            }
         }
 
         try {
