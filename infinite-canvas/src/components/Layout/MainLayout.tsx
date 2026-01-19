@@ -221,10 +221,10 @@ export const MainLayout = () => {
         const pageSafeMaxY = viewportPageBounds.maxY - safeArea.bottom / currentZoom
 
         const isInside = 
-            boardX >= pageSafeMinX &&
-            (boardX + boardWidth) <= pageSafeMaxX &&
-            boardY >= pageSafeMinY &&
-            (boardY + boardHeight) <= pageSafeMaxY
+            boardX >= pageSafeMinX - 1 && // Add 1px buffer
+            (boardX + boardWidth) <= pageSafeMaxX + 1 &&
+            boardY >= pageSafeMinY - 1 &&
+            (boardY + boardHeight) <= pageSafeMaxY + 1
 
         if (isInside) {
             console.log('[MainLayout] Content inside safe viewport, skipping zoom')
@@ -252,25 +252,32 @@ export const MainLayout = () => {
 
             if (targetZoom < MIN_ZOOM) {
                 console.log('[MainLayout] Target zoom too small, panning to new content instead')
-                // Strategy: Pan to center the NEW board in the safe area, keeping current zoom (or min zoom)
-                // We focus on the *new board* (boardX, boardY, boardWidth, boardHeight)
+                // Strategy: Pan so the NEW board is just fully visible at the BOTTOM of the safe area.
+                // This minimizes the "jump" distance from previous content (usually above).
                 
-                // Target: Board Center
-                const boardCenterPageX = boardX + boardWidth / 2
-                const boardCenterPageY = boardY + boardHeight / 2
+                // We want the bottom of the board (in page coords) to align with the bottom of the safe area (in screen coords).
+                
+                // Page Y of board bottom
+                const boardBottomPageY = boardY + boardHeight
+                
+                // Target Screen Y for that point (Bottom of Safe Area)
+                // Safe Area Top (Screen) = safeArea.top
+                // Safe Area Height = safeHeight
+                // So Safe Area Bottom (Screen) = safeArea.top + safeHeight
+                const safeBottomScreenY = safeArea.top + safeHeight
 
-                // Screen Target: Safe Area Center
+                // Target X: Keep centered horizontally in Safe Area
+                const boardCenterPageX = boardX + boardWidth / 2
                 const safeCenterScreenX = safeArea.left + safeWidth / 2
-                const safeCenterScreenY = safeArea.top + safeHeight / 2
                 
-                // Use current zoom or min zoom, whichever is appropriate (usually current zoom is fine if we just want to pan)
-                // But if current zoom is huge, maybe we want to zoom out a bit? 
-                // Requirement says: "if already zoomed to min, then pan".
-                // Let's use Math.max(currentZoom, MIN_ZOOM) to ensure we don't go below min.
+                // Use current zoom or min zoom
                 const panZoom = Math.max(currentZoom, MIN_ZOOM)
 
+                // Camera Model: Screen = (Page + Camera) * Zoom
+                // Camera = Screen / Zoom - Page
+                
                 const targetCameraX = safeCenterScreenX / panZoom - boardCenterPageX
-                const targetCameraY = safeCenterScreenY / panZoom - boardCenterPageY
+                const targetCameraY = safeBottomScreenY / panZoom - boardBottomPageY
 
                 editor.setCamera({
                     x: targetCameraX,

@@ -12,9 +12,10 @@
         - 正常逻辑：使用 `fitZoom` 和联合包围盒中心进行 `setCamera`。
     - **ELSE** (`fitZoom < minZoom`):
         - **平移逻辑**：
-            - 目标中心 = 新画板的中心 (`boardX + w/2`, `boardY + h/2`)。
+            - 目标位置：将新画板平移至安全视口的**下边缘**（即画板底部与安全区域底部对齐）。
+            - 计算公式：`TargetCameraY = SafeBottomScreenY / Zoom - BoardBottomPageY`。
             - 目标缩放 = `minZoom` (或者 `currentZoom`，取两者较小者，确保能看清)。
-            - 执行 `setCamera` 平移到新画板。
+            - 执行 `setCamera` 平移到新位置。
 
 ## 细节
 - 确保平移过程使用相同的缓动函数 `cubicBezier`。
