@@ -4,6 +4,9 @@ import react from '@vitejs/plugin-react'
 // https://vite.dev/config/
 export default defineConfig({
   plugins: [react()],
+  build: {
+    outDir: 'dist',
+  },
   define: {
     // Hack: Force development mode to bypass Tldraw license check in production
     // This allows the app to run without a license key for non-commercial/demo use
