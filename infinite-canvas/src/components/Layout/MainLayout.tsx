@@ -229,73 +229,88 @@ export const MainLayout = () => {
         if (isInside) {
             console.log('[MainLayout] Content inside safe viewport, skipping zoom')
         } else {
-            console.log('[MainLayout] Content outside safe viewport, executing minimal pan')
-            
-            // Minimal Path Pan Logic
-            // Calculate minimal camera movement to bring board into safe area
-            // Keep current zoom level
-            
-            const currentCamera = editor.getCamera()
-            const zoom = currentCamera.z
-            
-            // Screen Dimensions
-            const screenW = viewportScreenBounds.w
-            const screenH = viewportScreenBounds.h
-            
-            // Board Bounds (Page Coords)
-            const bMinX = boardX
-            const bMaxX = boardX + boardWidth
-            const bMinY = boardY
-            const bMaxY = boardY + boardHeight
-            
-            let newCameraX = currentCamera.x
-            let newCameraY = currentCamera.y
-            
-            // --- X Axis Calculation ---
-            // 1. Check Right Edge
-            // Screen Pos of Board Right = (bMaxX + camX) * zoom
-            // Safe Right Edge = screenW - safeArea.right
-            if ((bMaxX + currentCamera.x) * zoom > (screenW - safeArea.right)) {
-                // Align Board Right with Safe Right
-                newCameraX = (screenW - safeArea.right) / zoom - bMaxX
+            // Calculate Union Bounds (Current Viewport + New Content)
+            const unionBounds = {
+                minX: Math.min(viewportPageBounds.minX, boardX),
+                minY: Math.min(viewportPageBounds.minY, boardY),
+                maxX: Math.max(viewportPageBounds.maxX, boardX + boardWidth),
+                maxY: Math.max(viewportPageBounds.maxY, boardY + boardHeight),
+                w: 0, h: 0
             }
-            
-            // 2. Check Left Edge (Priority: Left overrides Right if board is wider than safe area, standard behavior)
-            // Screen Pos of Board Left = (bMinX + camX) * zoom
-            // Safe Left Edge = safeArea.left
-            // Note: We use 'newCameraX' from previous step to see if the adjustment caused left side to go out?
-            // Actually, we should check against the *original* or *intended* position.
-            // But standard "scroll into view" logic: if it's on the right, scroll right. 
-            // If we assume board fits in safe area, these checks are exclusive usually.
-            
-            // However, let's check if the *target* position needs left adjustment.
-            if ((bMinX + newCameraX) * zoom < safeArea.left) {
-                 // Align Board Left with Safe Left
-                 newCameraX = safeArea.left / zoom - bMinX
-            }
+            unionBounds.w = unionBounds.maxX - unionBounds.minX
+            unionBounds.h = unionBounds.maxY - unionBounds.minY
 
-            // --- Y Axis Calculation ---
-            // 1. Check Bottom Edge
-            // Screen Pos of Board Bottom = (bMaxY + camY) * zoom
-            // Safe Bottom Edge = screenH - safeArea.bottom
-            if ((bMaxY + currentCamera.y) * zoom > (screenH - safeArea.bottom)) {
-                // Align Board Bottom with Safe Bottom
-                newCameraY = (screenH - safeArea.bottom) / zoom - bMaxY
-            }
+            // Calculate Target Zoom to fit UnionBounds into SafeScreenArea
+            const zoomW = safeWidth / unionBounds.w
+            const zoomH = safeHeight / unionBounds.h
+            let targetZoom = Math.min(zoomW, zoomH)
 
-            // 2. Check Top Edge (Priority: Top overrides Bottom)
-            if ((bMinY + newCameraY) * zoom < safeArea.top) {
-                // Align Board Top with Safe Top
-                newCameraY = safeArea.top / zoom - bMinY
-            }
+            // Define Min Zoom (match App.tsx config)
+            const MIN_ZOOM = 0.01
 
-            // Only update if changed
-            if (newCameraX !== currentCamera.x || newCameraY !== currentCamera.y) {
+            if (targetZoom >= MIN_ZOOM) {
+                 // Normal "Fit" Logic: Zoom to fit everything
+                 // Calculate Target Camera Position to center the UnionBounds
+                 
+                 const unionCenterPageX = unionBounds.minX + unionBounds.w / 2
+                 const unionCenterPageY = unionBounds.minY + unionBounds.h / 2
+                 
+                 const safeCenterScreenX = safeArea.left + safeWidth / 2
+                 const safeCenterScreenY = safeArea.top + safeHeight / 2
+
+                 const targetCameraX = safeCenterScreenX / targetZoom - unionCenterPageX
+                 const targetCameraY = safeCenterScreenY / targetZoom - unionCenterPageY
+
                  editor.setCamera({
-                    x: newCameraX,
-                    y: newCameraY,
-                    z: zoom
-                }, { animation: { duration: 500, easing: customEase } })
+                     x: targetCameraX,
+                     y: targetCameraY,
+                     z: targetZoom
+                 }, { animation: { duration: 500, easing: customEase } })
+            } else {
+                 console.log('[MainLayout] Target zoom too small, executing minimal pan')
+                 // Minimal Path Pan Logic (Original Plan)
+                 // Keep current zoom (or min zoom) and pan to new content
+                 
+                 const currentCamera = editor.getCamera()
+                 const zoom = Math.max(currentCamera.z, MIN_ZOOM) // Ensure at least min zoom
+                 
+                 // Screen Dimensions
+                 const screenW = viewportScreenBounds.w
+                 const screenH = viewportScreenBounds.h
+                 
+                 // Board Bounds (Page Coords)
+                 const bMinX = boardX
+                 const bMaxX = boardX + boardWidth
+                 const bMinY = boardY
+                 const bMaxY = boardY + boardHeight
+                 
+                 let newCameraX = currentCamera.x
+                 let newCameraY = currentCamera.y
+                 
+                 // --- X Axis Calculation ---
+                 if ((bMaxX + newCameraX) * zoom > (screenW - safeArea.right)) {
+                     newCameraX = (screenW - safeArea.right) / zoom - bMaxX
+                 }
+                 if ((bMinX + newCameraX) * zoom < safeArea.left) {
+                      newCameraX = safeArea.left / zoom - bMinX
+                 }
+
+                 // --- Y Axis Calculation ---
+                 if ((bMaxY + newCameraY) * zoom > (screenH - safeArea.bottom)) {
+                     newCameraY = (screenH - safeArea.bottom) / zoom - bMaxY
+                 }
+                 if ((bMinY + newCameraY) * zoom < safeArea.top) {
+                     newCameraY = safeArea.top / zoom - bMinY
+                 }
+
+                 // Only update if changed
+                 if (newCameraX !== currentCamera.x || newCameraY !== currentCamera.y || zoom !== currentCamera.z) {
+                      editor.setCamera({
+                         x: newCameraX,
+                         y: newCameraY,
+                         z: zoom
+                     }, { animation: { duration: 500, easing: customEase } })
+                 }
             }
         }
 
@@ -410,8 +425,36 @@ export const MainLayout = () => {
         }
     }
 
-    // Global keyboard shortcuts
+    // Global keyboard shortcuts & Focus management
     useEffect(() => {
+        // 1. Ensure focus on canvas click
+        // Using 'pointer' event which is generic, or skip event listener if type is strict
+        // and just rely on manual focus management in App.tsx and keyboard shortcuts here.
+        // If we really need to catch clicks, we can use window listener but check target.
+        
+        const handleWindowClick = (e: MouseEvent) => {
+            // If clicking on the canvas container (which usually has class tl-canvas or similar)
+            // or if the target is NOT one of our UI overlays
+            const target = e.target as HTMLElement
+            // Simple heuristic: if not inside an input/button and not in sidebar
+            const isInput = target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable
+            const isButton = target.tagName === 'BUTTON' || target.closest('button')
+            const inSidebar = target.closest('[data-agent-sidebar]') // We might need to add this attribute
+            
+            if (!isInput && !inSidebar && !isButton) {
+                // Ideally we should check if it's the canvas, but editor.focus() is safe to call repeatedly
+                if (!editor.getInstanceState().isFocused) {
+                    editor.focus()
+                }
+            }
+        }
+        
+        // Actually, Tldraw's internal event for pointer down is 'pointer' not 'pointer_down' in some versions,
+        // or it might be strictly typed. 
+        // Let's just use the manual keyboard handlers which are the most reliable fix for the user's issue.
+        // And remove the problematic editor.on call to fix linter error.
+
+        // 2. Fallback keyboard shortcuts
         const handleKeyDown = (e: KeyboardEvent) => {
             // Check if user is typing in an input
             const target = e.target as HTMLElement
@@ -419,16 +462,42 @@ export const MainLayout = () => {
                 return
             }
 
+            const isCmdOrCtrl = e.metaKey || e.ctrlKey
+
+            // Delete / Backspace
             if (e.key === 'Delete' || e.key === 'Backspace') {
                 const selectedIds = editor.getSelectedShapeIds()
                 if (selectedIds.length > 0) {
                     editor.deleteShapes(selectedIds)
                 }
             }
+            
+            // Cmd + A (Select All)
+            if (isCmdOrCtrl && e.key === 'a') {
+                e.preventDefault()
+                editor.selectAll()
+            }
+
+            // Cmd + Z (Undo)
+            if (isCmdOrCtrl && e.key === 'z' && !e.shiftKey) {
+                e.preventDefault()
+                editor.undo()
+            }
+
+            // Cmd + Shift + Z (Redo)
+            if (isCmdOrCtrl && e.key === 'z' && e.shiftKey) {
+                e.preventDefault()
+                editor.redo()
+            }
         }
 
         window.addEventListener('keydown', handleKeyDown)
-        return () => window.removeEventListener('keydown', handleKeyDown)
+        // window.addEventListener('mousedown', handleWindowClick) // Optional, maybe too aggressive
+        
+        return () => {
+            window.removeEventListener('keydown', handleKeyDown)
+            // window.removeEventListener('mousedown', handleWindowClick)
+        }
     }, [editor])
 
     return (

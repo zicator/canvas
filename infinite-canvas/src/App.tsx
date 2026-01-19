@@ -18,7 +18,12 @@ function App() {
                 }}
                 onMount={(editor) => {
                     editor.setCamera({ x: 0, y: 0, z: 0.04 })
+                    // Delay focus to ensure it sticks after initial render
+                    setTimeout(() => {
+                        editor.focus()
+                    }, 100)
                 }}
+                autoFocus
             >
                 <MainLayout />
             </Tldraw>
