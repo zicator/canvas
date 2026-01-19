@@ -229,79 +229,72 @@ export const MainLayout = () => {
         if (isInside) {
             console.log('[MainLayout] Content inside safe viewport, skipping zoom')
         } else {
-            console.log('[MainLayout] Content outside safe viewport, adjusting camera')
+            console.log('[MainLayout] Content outside safe viewport, executing minimal pan')
             
-            // Calculate Union Bounds (Current Viewport + New Content)
-            const unionBounds = {
-                minX: Math.min(viewportPageBounds.minX, boardX),
-                minY: Math.min(viewportPageBounds.minY, boardY),
-                maxX: Math.max(viewportPageBounds.maxX, boardX + boardWidth),
-                maxY: Math.max(viewportPageBounds.maxY, boardY + boardHeight),
-                w: 0, h: 0
+            // Minimal Path Pan Logic
+            // Calculate minimal camera movement to bring board into safe area
+            // Keep current zoom level
+            
+            const currentCamera = editor.getCamera()
+            const zoom = currentCamera.z
+            
+            // Screen Dimensions
+            const screenW = viewportScreenBounds.w
+            const screenH = viewportScreenBounds.h
+            
+            // Board Bounds (Page Coords)
+            const bMinX = boardX
+            const bMaxX = boardX + boardWidth
+            const bMinY = boardY
+            const bMaxY = boardY + boardHeight
+            
+            let newCameraX = currentCamera.x
+            let newCameraY = currentCamera.y
+            
+            // --- X Axis Calculation ---
+            // 1. Check Right Edge
+            // Screen Pos of Board Right = (bMaxX + camX) * zoom
+            // Safe Right Edge = screenW - safeArea.right
+            if ((bMaxX + currentCamera.x) * zoom > (screenW - safeArea.right)) {
+                // Align Board Right with Safe Right
+                newCameraX = (screenW - safeArea.right) / zoom - bMaxX
             }
-            unionBounds.w = unionBounds.maxX - unionBounds.minX
-            unionBounds.h = unionBounds.maxY - unionBounds.minY
+            
+            // 2. Check Left Edge (Priority: Left overrides Right if board is wider than safe area, standard behavior)
+            // Screen Pos of Board Left = (bMinX + camX) * zoom
+            // Safe Left Edge = safeArea.left
+            // Note: We use 'newCameraX' from previous step to see if the adjustment caused left side to go out?
+            // Actually, we should check against the *original* or *intended* position.
+            // But standard "scroll into view" logic: if it's on the right, scroll right. 
+            // If we assume board fits in safe area, these checks are exclusive usually.
+            
+            // However, let's check if the *target* position needs left adjustment.
+            if ((bMinX + newCameraX) * zoom < safeArea.left) {
+                 // Align Board Left with Safe Left
+                 newCameraX = safeArea.left / zoom - bMinX
+            }
 
-            // Calculate Target Zoom to fit UnionBounds into SafeScreenArea
-            const zoomW = safeWidth / unionBounds.w
-            const zoomH = safeHeight / unionBounds.h
-            let targetZoom = Math.min(zoomW, zoomH)
+            // --- Y Axis Calculation ---
+            // 1. Check Bottom Edge
+            // Screen Pos of Board Bottom = (bMaxY + camY) * zoom
+            // Safe Bottom Edge = screenH - safeArea.bottom
+            if ((bMaxY + currentCamera.y) * zoom > (screenH - safeArea.bottom)) {
+                // Align Board Bottom with Safe Bottom
+                newCameraY = (screenH - safeArea.bottom) / zoom - bMaxY
+            }
 
-            // Define Min Zoom (match App.tsx config)
-            const MIN_ZOOM = 0.01
+            // 2. Check Top Edge (Priority: Top overrides Bottom)
+            if ((bMinY + newCameraY) * zoom < safeArea.top) {
+                // Align Board Top with Safe Top
+                newCameraY = safeArea.top / zoom - bMinY
+            }
 
-            if (targetZoom < MIN_ZOOM) {
-                console.log('[MainLayout] Target zoom too small, panning to new content instead')
-                // Strategy: Pan so the NEW board is just fully visible at the BOTTOM of the safe area.
-                // This minimizes the "jump" distance from previous content (usually above).
-                
-                // We want the bottom of the board (in page coords) to align with the bottom of the safe area (in screen coords).
-                
-                // Page Y of board bottom
-                const boardBottomPageY = boardY + boardHeight
-                
-                // Target Screen Y for that point (Bottom of Safe Area)
-                // Safe Area Top (Screen) = safeArea.top
-                // Safe Area Height = safeHeight
-                // So Safe Area Bottom (Screen) = safeArea.top + safeHeight
-                const safeBottomScreenY = safeArea.top + safeHeight
-
-                // Target X: Keep centered horizontally in Safe Area
-                const boardCenterPageX = boardX + boardWidth / 2
-                const safeCenterScreenX = safeArea.left + safeWidth / 2
-                
-                // Use current zoom or min zoom
-                const panZoom = Math.max(currentZoom, MIN_ZOOM)
-
-                // Camera Model: Screen = (Page + Camera) * Zoom
-                // Camera = Screen / Zoom - Page
-                
-                const targetCameraX = safeCenterScreenX / panZoom - boardCenterPageX
-                const targetCameraY = safeBottomScreenY / panZoom - boardBottomPageY
-
-                editor.setCamera({
-                    x: targetCameraX,
-                    y: targetCameraY,
-                    z: panZoom
-                }, { animation: { duration: 500, easing: customEase } })
-
-            } else {
-                // Normal "Fit" Logic
-                // Calculate Target Camera Position to center the UnionBounds
-                
-                const unionCenterPageX = unionBounds.minX + unionBounds.w / 2
-                const unionCenterPageY = unionBounds.minY + unionBounds.h / 2
-                
-                const safeCenterScreenX = safeArea.left + safeWidth / 2
-                const safeCenterScreenY = safeArea.top + safeHeight / 2
-
-                const targetCameraX = safeCenterScreenX / targetZoom - unionCenterPageX
-                const targetCameraY = safeCenterScreenY / targetZoom - unionCenterPageY
-
-                editor.setCamera({
-                    x: targetCameraX,
-                    y: targetCameraY,
-                    z: targetZoom
+            // Only update if changed
+            if (newCameraX !== currentCamera.x || newCameraY !== currentCamera.y) {
+                 editor.setCamera({
+                    x: newCameraX,
+                    y: newCameraY,
+                    z: zoom
                 }, { animation: { duration: 500, easing: customEase } })
             }
         }
