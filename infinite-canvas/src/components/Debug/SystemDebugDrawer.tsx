@@ -38,9 +38,7 @@ export const SystemDebugDrawer = () => {
         }
     }, [isDebugDrawerOpen, debugRowMaxWidth, editor])
 
-    // Build info
-    const buildTime = import.meta.env.VITE_BUILD_TIME || 'Dev'
-    const commitHash = import.meta.env.VITE_COMMIT_HASH || 'Local'
+    if (!isDebugDrawerOpen) return null
 
     return (
         <div style={{
@@ -64,12 +62,7 @@ export const SystemDebugDrawer = () => {
                 justifyContent: 'space-between',
                 alignItems: 'center'
             }}>
-                <div>
-                    <h2 style={{ fontSize: 16, fontWeight: 600, margin: 0 }}>System Debug</h2>
-                    <div style={{ fontSize: 10, color: '#94a3b8', marginTop: 2 }}>
-                        v{commitHash.slice(0, 7)} ({buildTime})
-                    </div>
-                </div>
+                <h2 style={{ fontSize: 16, fontWeight: 600, margin: 0 }}>System Debug</h2>
                 <button
                     onClick={() => setDebugDrawerOpen(false)}
                     style={{
@@ -87,6 +80,40 @@ export const SystemDebugDrawer = () => {
 
             {/* Content */}
             <div style={{ padding: 16, flex: 1, overflowY: 'auto' }}>
+                <div style={{ marginBottom: 24 }}>
+                    <h3 style={{ fontSize: 14, fontWeight: 600, marginBottom: 12 }}>System Info</h3>
+                    <div style={{ 
+                        padding: 12, 
+                        backgroundColor: '#f8fafc', 
+                        borderRadius: 8, 
+                        border: '1px solid #e2e8f0',
+                        fontSize: 11,
+                        color: '#64748b',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: 4
+                    }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                            <span>Version:</span>
+                            <span style={{ color: '#0f172a', fontWeight: 500 }}>
+                                {import.meta.env.VITE_APP_VERSION || '0.0.0'}
+                            </span>
+                        </div>
+                        <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                            <span>Build Time:</span>
+                            <span style={{ color: '#0f172a', fontWeight: 500 }}>
+                                {import.meta.env.VITE_BUILD_TIME ? new Date(import.meta.env.VITE_BUILD_TIME).toLocaleString() : 'Dev Mode'}
+                            </span>
+                        </div>
+                        <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                            <span>Environment:</span>
+                            <span style={{ color: '#0f172a', fontWeight: 500 }}>
+                                {import.meta.env.MODE}
+                            </span>
+                        </div>
+                    </div>
+                </div>
+
                 <div style={{ marginBottom: 24 }}>
                     <h3 style={{ fontSize: 14, fontWeight: 600, marginBottom: 12 }}>Auto Layout</h3>
                     
