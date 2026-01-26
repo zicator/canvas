@@ -109,8 +109,8 @@ export const CustomToolbar = track(() => {
             gap: 4,
             padding: 4,
             backgroundColor: 'white',
-            borderRadius: 8,
-            boxShadow: '0 2px 10px rgba(0,0,0,0.1)',
+            borderRadius: 12,
+            boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)',
             zIndex: 300,
             border: '1px solid #e2e8f0'
         }}>
@@ -144,8 +144,8 @@ export const CustomToolbar = track(() => {
                             gap: 8,
                             padding: 12,
                             backgroundColor: '#FFFFFF',
-                            borderRadius: 8,
-                            boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+                            borderRadius: 12,
+                            boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)',
                             border: '1px solid #e2e8f0',
                             maxWidth: 360,
                             minWidth: 168, // 3 * 40 + 2 * 8 + 24 = 168
@@ -187,12 +187,12 @@ const ToolButton = ({ icon, label, isActive, onClick }: any) => {
                 alignItems: 'center',
                 justifyContent: 'center',
                 fontSize: 18,
-                backgroundColor: isActive ? 'rgba(0,0,0,0.07)' : (isPressed ? 'rgba(0,0,0,0.07)' : (isHovered ? 'rgba(0,0,0,0.05)' : 'transparent')),
-                color: isActive ? '#2d3748' : '#718096',
+                backgroundColor: isActive ? '#f1f5f9' : (isPressed ? '#f1f5f9' : (isHovered ? '#f8fafc' : 'transparent')),
+                color: isActive ? '#0f172a' : '#64748b',
                 border: 'none',
-                borderRadius: 4,
+                borderRadius: 8,
                 cursor: 'pointer',
-                transition: 'background-color 0.2s',
+                transition: 'all 0.2s ease',
                 padding: 0,
                 boxSizing: 'border-box'
             }}

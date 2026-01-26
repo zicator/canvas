@@ -187,15 +187,8 @@ export const MainLayout = () => {
         // Rule B: Outside Viewport -> Union Fit
 
         const viewportPageBounds = editor.getViewportPageBounds()
-        const zoom = editor.getZoomLevel()
-
-        // Safe Viewport Padding
-        const topPadding = 160
-        const leftPadding = 160
-        const bottomPadding = 160
-        const rightPadding = 160
         
-            // Calculate Safe Viewport in Page Coordinates
+        // Calculate Safe Viewport in Page Coordinates
         const viewportScreenBounds = editor.getViewportScreenBounds()
         
         // Define safe area in SCREEN coordinates
@@ -432,28 +425,6 @@ export const MainLayout = () => {
         // and just rely on manual focus management in App.tsx and keyboard shortcuts here.
         // If we really need to catch clicks, we can use window listener but check target.
         
-        const handleWindowClick = (e: MouseEvent) => {
-            // If clicking on the canvas container (which usually has class tl-canvas or similar)
-            // or if the target is NOT one of our UI overlays
-            const target = e.target as HTMLElement
-            // Simple heuristic: if not inside an input/button and not in sidebar
-            const isInput = target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable
-            const isButton = target.tagName === 'BUTTON' || target.closest('button')
-            const inSidebar = target.closest('[data-agent-sidebar]') // We might need to add this attribute
-            
-            if (!isInput && !inSidebar && !isButton) {
-                // Ideally we should check if it's the canvas, but editor.focus() is safe to call repeatedly
-                if (!editor.getInstanceState().isFocused) {
-                    editor.focus()
-                }
-            }
-        }
-        
-        // Actually, Tldraw's internal event for pointer down is 'pointer' not 'pointer_down' in some versions,
-        // or it might be strictly typed. 
-        // Let's just use the manual keyboard handlers which are the most reliable fix for the user's issue.
-        // And remove the problematic editor.on call to fix linter error.
-
         // 2. Fallback keyboard shortcuts
         const handleKeyDown = (e: KeyboardEvent) => {
             // Check if user is typing in an input
